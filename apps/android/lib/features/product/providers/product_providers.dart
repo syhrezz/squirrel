@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart';
 import '../../../core/database/app_database.dart';
 import '../../../shared/providers/database_providers.dart';
+import '../data/repositories/product_repository.dart';
 
 /// Watches the full list of active products.
 final productListProvider = StreamProvider<List<Product>>((ref) {
@@ -14,9 +15,14 @@ final productDetailProvider =
   return ref.watch(productRepositoryProvider).watchById(id);
 });
 
-/// Handles create/update operations and exposes async state.
-///
-/// In Riverpod 3.x, AsyncNotifier is auto-dispose by default.
+/// Watches selling options for a product.
+final sellingOptionsProvider =
+    StreamProvider.family<List<ProductSellingOption>, String>(
+        (ref, productId) {
+  return ref.watch(productRepositoryProvider).watchSellingOptions(productId);
+});
+
+/// Handles create/update/selling-options save operations.
 class ProductFormNotifier extends AsyncNotifier<void> {
   @override
   Future<void> build() async {}
@@ -28,23 +34,42 @@ class ProductFormNotifier extends AsyncNotifier<void> {
     String? customUnit,
     required int sellPrice,
     required int lastBuyPrice,
+    required String category,
+    required String inventoryUnit,
+    required String purchaseUnit,
+    required int purchaseConversion,
+    required bool allowManualPrice,
+    required List<SellingOptionInput> sellingOptions,
   }) async {
     state = const AsyncLoading();
 
-    final companion = ProductsCompanion(
-      name: Value(name),
-      unit: Value(unit),
-      customUnit: Value(customUnit),
-      sellPrice: Value(sellPrice),
-      lastBuyPrice: Value(lastBuyPrice),
-    );
-
     state = await AsyncValue.guard(() async {
       final repo = ref.read(productRepositoryProvider);
+
+      final companion = ProductsCompanion(
+        name: Value(name),
+        unit: Value(unit),
+        customUnit: Value(customUnit),
+        sellPrice: Value(sellPrice),
+        lastBuyPrice: Value(lastBuyPrice),
+        category: Value(category),
+        inventoryUnit: Value(inventoryUnit),
+        purchaseUnit: Value(purchaseUnit),
+        purchaseConversion: Value(purchaseConversion),
+        allowManualPrice: Value(allowManualPrice),
+      );
+
+      late String productId;
       if (existingId == null) {
-        await repo.create(companion);
+        final product = await repo.create(companion);
+        productId = product.id;
       } else {
+        productId = existingId;
         await repo.update(existingId, companion);
+      }
+
+      if (sellingOptions.isNotEmpty) {
+        await repo.saveSellingOptions(productId, sellingOptions);
       }
     });
   }

@@ -38,18 +38,18 @@ class SeedDataService {
     // PRODUCTS — 12 realistic warung kelontong items
     // -------------------------------------------------------------------------
     final products = [
-      _product('Indomie Goreng',         'pcs',    3500, 2800,  48, now),
-      _product('Indomie Soto',           'pcs',    3500, 2800,  36, now),
-      _product('Beras (1 kg)',           'kg',    14000,12000,  50, now),
-      _product('Gula Pasir (1 kg)',      'kg',    16000,14000,  20, now),
-      _product('Minyak Goreng Bimoli 1L','liter', 20000,17500,  12, now),
-      _product('Kecap Manis ABC 135ml',  'botol',  8500, 7000,  18, now),
-      _product('Sabun Lifebuoy',         'pcs',    5000, 4000,  24, now),
-      _product('Aqua 600ml',             'botol',  4000, 2800,  60, now),
-      _product('Rokok Gudang Garam 12',  'bungkus',25000,22000, 20, now),
-      _product('Teh Pucuk Harum 350ml',  'botol',  5000, 3500,  30, now),
-      _product('Susu Kental Manis Indomilk', 'kaleng', 12000, 10000, 15, now),
-      _product('Mie Sedaap Goreng',      'pcs',    3000, 2400,  40, now),
+      _product('Indomie Goreng',         'pcs',    3500, 2800,  48, now, 'makanan'),
+      _product('Indomie Soto',           'pcs',    3500, 2800,  36, now, 'makanan'),
+      _product('Beras (1 kg)',           'kg',    14000,12000,  50, now, 'beras_dan_pokok'),
+      _product('Gula Pasir (1 kg)',      'kg',    16000,14000,  20, now, 'bumbu_dapur'),
+      _product('Minyak Goreng Bimoli 1L','liter', 20000,17500,  12, now, 'bumbu_dapur'),
+      _product('Kecap Manis ABC 135ml',  'botol',  8500, 7000,  18, now, 'bumbu_dapur'),
+      _product('Sabun Lifebuoy',         'pcs',    5000, 4000,  24, now, 'perawatan_tubuh'),
+      _product('Aqua 600ml',             'botol',  4000, 2800,  60, now, 'minuman'),
+      _product('Rokok Gudang Garam 12',  'bungkus',25000,22000, 20, now, 'rokok'),
+      _product('Teh Pucuk Harum 350ml',  'botol',  5000, 3500,  30, now, 'minuman'),
+      _product('Susu Kental Manis Indomilk', 'kaleng', 12000, 10000, 15, now, 'minuman'),
+      _product('Mie Sedaap Goreng',      'pcs',    3000, 2400,  40, now, 'makanan'),
     ];
 
     final productIds = <String>[];
@@ -268,6 +268,7 @@ class SeedDataService {
     int lastBuyPrice,
     int stock,
     int now,
+    String category,
   ) {
     return ProductsCompanion.insert(
       id: UuidUtil.generate(),
@@ -276,6 +277,7 @@ class SeedDataService {
       sellPrice: sellPrice,
       lastBuyPrice: lastBuyPrice,
       currentStock: Value(stock),
+      category: Value(category),
       createdAt: now,
       updatedAt: now,
       createdBy: kDevUser.id,

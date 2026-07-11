@@ -1,0 +1,40 @@
+name: mr_squirrel_dashboard
+description: "MR SQUIRREL — Web Administration Dashboard"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State management
+  flutter_riverpod: ^3.3.2
+
+  # Navigation
+  go_router: ^17.3.0
+
+  # Supabase
+  supabase_flutter: ^2.16.0
+
+  # Charts
+  fl_chart: ^0.70.2
+
+  # Formatting
+  intl: ^0.20.3
+
+  # Export
+  excel: ^4.0.6
+
+  # Icons
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

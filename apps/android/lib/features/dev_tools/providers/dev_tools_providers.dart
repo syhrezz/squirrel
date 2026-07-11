@@ -16,3 +16,8 @@ final dbStatsProvider = FutureProvider<DbStats>((ref) {
 final integrityCheckProvider = FutureProvider<IntegrityResult>((ref) {
   return ref.watch(devToolsDataServiceProvider).runIntegrityChecks();
 });
+
+/// DEV ONLY — provides sync metrics from sync_log table.
+final syncMetricsProvider = FutureProvider<SyncMetrics>((ref) {
+  return ref.watch(devToolsDataServiceProvider).getSyncMetrics();
+});

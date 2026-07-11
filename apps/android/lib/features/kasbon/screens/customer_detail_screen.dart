@@ -5,10 +5,6 @@ import '../../../core/utils/currency_formatter.dart';
 import '../../../core/database/app_database.dart';
 import '../providers/kasbon_providers.dart';
 
-/// Customer detail screen.
-///
-/// Shows customer info, outstanding balance, and full transaction timeline.
-/// Two action buttons: Record Debt, Record Payment.
 class CustomerDetailScreen extends ConsumerWidget {
   const CustomerDetailScreen({super.key, required this.customerId});
   final String customerId;
@@ -26,128 +22,153 @@ class CustomerDetailScreen extends ConsumerWidget {
         backgroundColor: Colors.white,
         foregroundColor: colorScheme.onSurface,
         surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 1,
         title: customerAsync.when(
-          data: (c) => Text(c?.name ?? ''),
-          loading: () => const Text(''),
-          error: (_, s) => const Text('Pelanggan'),
+          data: (c) => Text(
+            c?.name ?? '',
+            style: const TextStyle(
+              fontSize: 19,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.3,
+              color: Color(0xFF1A1A1A),
+            ),
+          ),
+          loading: () => const SizedBox.shrink(),
+          error: (_, __) => const Text('Pelanggan'),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.edit_rounded),
-            tooltip: 'Edit Pelanggan',
-            onPressed: () =>
-                context.push('/kasbon/$customerId/edit'),
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: IconButton(
+              icon: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: colorScheme.primary.withAlpha(15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(Icons.edit_rounded,
+                    size: 18, color: colorScheme.primary),
+              ),
+              tooltip: 'Edit Pelanggan',
+              onPressed: () =>
+                  context.push('/kasbon/$customerId/edit'),
+            ),
           ),
         ],
       ),
       body: Column(
         children: [
-          // Balance header card
-          _BalanceHeader(
-            customerId: customerId,
+          _BalanceCard(
             balanceAsync: balanceAsync,
             customerAsync: customerAsync,
           ),
-
-          // Timeline
           Expanded(
             child: txAsync.when(
               loading: () =>
                   const Center(child: CircularProgressIndicator()),
               error: (e, _) => Center(
-                child: Text('Gagal memuat transaksi: $e'),
+                child: Text('Gagal memuat transaksi: $e',
+                    style: TextStyle(color: Colors.grey[500])),
               ),
               data: (transactions) {
                 if (transactions.isEmpty) {
-                  return const Center(
+                  return Center(
                     child: Padding(
-                      padding: EdgeInsets.all(32),
+                      padding: const EdgeInsets.all(32),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(
-                            Icons.receipt_long_rounded,
-                            size: 56,
-                            color: Colors.grey,
-                          ),
-                          SizedBox(height: 12),
+                          Icon(Icons.receipt_long_rounded,
+                              size: 56, color: Colors.grey[300]),
+                          const SizedBox(height: 16),
                           Text(
-                            'Belum ada transaksi kasbon.',
+                            'Belum ada transaksi.',
                             style: TextStyle(
-                                fontSize: 16, color: Colors.grey),
+                                fontSize: 15, color: Colors.grey[500]),
                           ),
                         ],
                       ),
                     ),
                   );
                 }
-                return ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+
+                return ListView.builder(
+                  padding:
+                      const EdgeInsets.fromLTRB(16, 8, 16, 16),
                   itemCount: transactions.length,
-                  separatorBuilder: (context, index) =>
-                      const SizedBox(height: 8),
-                  itemBuilder: (context, index) =>
-                      _TransactionCard(tx: transactions[index]),
+                  itemBuilder: (context, index) {
+                    final tx = transactions[index];
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: _TransactionCard(tx: tx),
+                    );
+                  },
                 );
               },
             ),
           ),
-
-          // Action buttons
-          _ActionButtons(customerId: customerId),
+          _ActionBar(customerId: customerId),
         ],
       ),
     );
   }
 }
 
-class _BalanceHeader extends StatelessWidget {
-  const _BalanceHeader({
-    required this.customerId,
+class _BalanceCard extends StatelessWidget {
+  const _BalanceCard({
     required this.balanceAsync,
     required this.customerAsync,
   });
 
-  final String customerId;
   final AsyncValue<int> balanceAsync;
   final AsyncValue<Customer?> customerAsync;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final balance = balanceAsync.when(
-      data: (v) => v,
-      loading: () => 0,
-      error: (e, s) => 0,
-    );
-    final hasDebt = balance > 0;
 
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-      child: Column(
-        children: [
-          Row(
+    return balanceAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (balance) {
+        final hasDebt = balance > 0;
+        final isCredit = balance < 0;
+
+        return Container(
+          margin: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withAlpha(8),
+                blurRadius: 12,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
             children: [
-              CircleAvatar(
-                radius: 28,
-                backgroundColor: hasDebt
-                    ? colorScheme.errorContainer
-                    : colorScheme.primaryContainer,
-                child: Text(
-                  () {
-                    final c = customerAsync.hasValue ? customerAsync.value : null;
-                    return (c?.name.isNotEmpty == true)
-                        ? c!.name[0].toUpperCase()
-                        : '?';
-                  }(),
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: hasDebt
-                        ? colorScheme.onErrorContainer
-                        : colorScheme.onPrimaryContainer,
-                  ),
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: hasDebt
+                      ? Colors.red[50]
+                      : colorScheme.primary.withAlpha(15),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  hasDebt
+                      ? Icons.arrow_upward_rounded
+                      : Icons.check_circle_rounded,
+                  size: 24,
+                  color: hasDebt
+                      ? Colors.red[400]
+                      : colorScheme.primary,
                 ),
               ),
               const SizedBox(width: 16),
@@ -156,73 +177,52 @@ class _BalanceHeader extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      customerAsync.hasValue
-                          ? (customerAsync.value?.name ?? '')
-                          : '',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
+                      'Sisa Hutang',
+                      style: TextStyle(
+                          fontSize: 13, color: Colors.grey[500]),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      balance == 0
+                          ? 'Lunas'
+                          : CurrencyFormatter.format(balance.abs()),
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                        color: hasDebt
+                            ? Colors.red[600]
+                            : isCredit
+                                ? colorScheme.primary
+                                : Colors.grey[600],
+                        letterSpacing: -0.5,
                       ),
                     ),
-                    if (customerAsync.hasValue &&
-                        customerAsync.value?.phone != null)
-                      Text(
-                        customerAsync.value!.phone!,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                      ),
                   ],
                 ),
               ),
+              if (balance != 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: hasDebt ? Colors.red[50] : Colors.green[50],
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    hasDebt ? 'Berhutang' : 'Lebih bayar',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: hasDebt
+                          ? Colors.red[600]
+                          : colorScheme.primary,
+                    ),
+                  ),
+                ),
             ],
           ),
-          const SizedBox(height: 16),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(
-                horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: hasDebt
-                  ? colorScheme.errorContainer.withAlpha(120)
-                  : colorScheme.primaryContainer.withAlpha(120),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              children: [
-                Text(
-                  balance > 0
-                      ? 'Hutang Saat Ini'
-                      : balance < 0
-                          ? 'Lebih Bayar'
-                          : 'Status',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  balance == 0
-                      ? 'Lunas'
-                      : CurrencyFormatter.format(balance.abs()),
-                  style: TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: -0.5,
-                    color: hasDebt
-                        ? colorScheme.error
-                        : balance < 0
-                            ? colorScheme.primary
-                            : Colors.grey[600],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
@@ -237,40 +237,36 @@ class _TransactionCard extends StatelessWidget {
     final isDebt = tx.type == 'debt';
     final dt = DateTime.fromMillisecondsSinceEpoch(tx.createdAt);
     final dateStr =
-        '${dt.day}/${dt.month}/${dt.year}  ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+        '${dt.day}/${dt.month}/${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
 
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withAlpha(10),
+            color: Colors.black.withAlpha(6),
             blurRadius: 6,
             offset: const Offset(0, 1),
           ),
         ],
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: 38,
+            height: 38,
             decoration: BoxDecoration(
-              color: isDebt
-                  ? colorScheme.errorContainer
-                  : colorScheme.primaryContainer,
+              color: isDebt ? Colors.red[50] : Colors.green[50],
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
               isDebt
                   ? Icons.arrow_upward_rounded
                   : Icons.arrow_downward_rounded,
-              size: 20,
-              color: isDebt
-                  ? colorScheme.onErrorContainer
-                  : colorScheme.onPrimaryContainer,
+              size: 18,
+              color: isDebt ? Colors.red[400] : Colors.green[600],
             ),
           ),
           const SizedBox(width: 12),
@@ -279,37 +275,38 @@ class _TransactionCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  isDebt ? 'Hutang' : 'Pembayaran',
+                  isDebt ? 'Hutang' : 'Bayar',
                   style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                  ),
+                      fontSize: 14, fontWeight: FontWeight.w600),
                 ),
-                if (tx.note != null && tx.note!.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    tx.note!,
-                    style: TextStyle(
-                        fontSize: 13,
-                        color: colorScheme.onSurfaceVariant),
+                if (tx.note != null && tx.note!.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      tx.note!,
+                      style: TextStyle(
+                          fontSize: 12, color: Colors.grey[500]),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                ],
-                const SizedBox(height: 2),
-                Text(
-                  dateStr,
-                  style: TextStyle(
-                      fontSize: 12,
-                      color: colorScheme.onSurfaceVariant),
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Text(
+                    dateStr,
+                    style:
+                        TextStyle(fontSize: 11, color: Colors.grey[400]),
+                  ),
                 ),
               ],
             ),
           ),
           Text(
-            '${isDebt ? '+' : '-'}${CurrencyFormatter.format(tx.amount)}',
+            '${isDebt ? '+' : '-'} ${CurrencyFormatter.format(tx.amount)}',
             style: TextStyle(
               fontSize: 15,
-              fontWeight: FontWeight.bold,
-              color: isDebt ? colorScheme.error : colorScheme.primary,
+              fontWeight: FontWeight.w700,
+              color: isDebt ? Colors.red[600] : colorScheme.primary,
             ),
           ),
         ],
@@ -318,37 +315,57 @@ class _TransactionCard extends StatelessWidget {
   }
 }
 
-class _ActionButtons extends StatelessWidget {
-  const _ActionButtons({required this.customerId});
+class _ActionBar extends StatelessWidget {
+  const _ActionBar({required this.customerId});
   final String customerId;
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(10),
+            blurRadius: 12,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
       child: Row(
         children: [
           Expanded(
-            child: OutlinedButton.icon(
+            child: OutlinedButton(
               onPressed: () =>
                   context.push('/kasbon/$customerId/bayar'),
-              icon: const Icon(Icons.arrow_downward_rounded),
-              label: const Text('Catat Bayar'),
               style: OutlinedButton.styleFrom(
                 minimumSize: const Size.fromHeight(52),
+                side: BorderSide(color: colorScheme.primary),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text(
+                'Catat Bayar',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
               ),
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: ElevatedButton.icon(
+            child: ElevatedButton(
               onPressed: () =>
                   context.push('/kasbon/$customerId/hutang'),
-              icon: const Icon(Icons.arrow_upward_rounded),
-              label: const Text('Catat Hutang'),
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size.fromHeight(52),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text(
+                'Catat Hutang',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
               ),
             ),
           ),

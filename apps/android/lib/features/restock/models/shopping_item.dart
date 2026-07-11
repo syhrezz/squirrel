@@ -2,35 +2,52 @@
 ///
 /// NOT persisted until the user confirms with "Simpan Belanja".
 /// Lives only in RestockNotifier state.
+///
+/// v3: purchasePrice is now price PER PURCHASE UNIT (e.g. price per Dus).
+/// subtotal = quantity × purchasePrice — auto-calculated.
 class ShoppingItem {
   const ShoppingItem({
     required this.productId,
     required this.productName,
-    required this.unit,
-    required this.customUnit,
+    required this.purchaseUnit,
+    required this.purchaseConversion,
+    required this.inventoryUnit,
     required this.quantity,
     required this.purchasePrice,
   });
 
   final String productId;
   final String productName;
-  final String unit;
-  final String? customUnit;
+
+  /// The unit shown to the operator. Example: 'Dus', 'Pack', 'Karung'
+  final String purchaseUnit;
+
+  /// How many inventory units are in 1 purchase unit.
+  /// Example: 1 Dus = 40 pcs → purchaseConversion = 40
+  final int purchaseConversion;
+
+  /// The internal inventory unit. Example: 'pcs', 'gram'
+  final String inventoryUnit;
+
+  /// How many purchase units the operator bought.
   final int quantity;
 
-  /// Actual price paid per unit on this shopping trip.
+  /// Price PER PURCHASE UNIT in IDR.
+  /// Example: 1 Dus = 50.000 → purchasePrice = 50000
   final int purchasePrice;
 
+  /// Subtotal = quantity × purchasePrice (auto-calculated).
   int get subtotal => quantity * purchasePrice;
 
-  String get displayUnit =>
-      unit == 'lainnya' && customUnit != null ? customUnit! : unit;
+  /// How many inventory units will be added to stock.
+  int get inventoryStockAdded => quantity * purchaseConversion;
 
   ShoppingItem copyWith({int? quantity, int? purchasePrice}) => ShoppingItem(
         productId: productId,
         productName: productName,
-        unit: unit,
-        customUnit: customUnit,
+        purchaseUnit: purchaseUnit,
+        purchaseConversion: purchaseConversion,
+        inventoryUnit: inventoryUnit,
         quantity: quantity ?? this.quantity,
         purchasePrice: purchasePrice ?? this.purchasePrice,
       );

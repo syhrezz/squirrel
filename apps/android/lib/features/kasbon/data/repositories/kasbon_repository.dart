@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/utils/uuid_util.dart';
 import '../../../../core/utils/dev_user.dart';
+import '../../../../features/sync/data/repositories/sync_repository.dart';
 import '../../models/customer_with_balance.dart';
 
 /// Append-only ledger operations for kasbon (debt/payment) tracking.
@@ -35,8 +36,9 @@ abstract class KasbonRepository {
 }
 
 class DriftKasbonRepository implements KasbonRepository {
-  const DriftKasbonRepository(this._db);
+  const DriftKasbonRepository(this._db, this._sync);
   final AppDatabase _db;
+  final SyncRepository _sync;
 
   @override
   Stream<List<CustomerWithBalance>> watchCustomersWithBalance() {
@@ -120,9 +122,10 @@ class DriftKasbonRepository implements KasbonRepository {
     String? note,
   }) async {
     final now = DateTime.now().millisecondsSinceEpoch;
+    final id = UuidUtil.generate();
     await _db.into(_db.debtTransactions).insert(
           DebtTransactionsCompanion.insert(
-            id: UuidUtil.generate(),
+            id: id,
             customerId: customerId,
             type: 'debt',
             amount: amount,
@@ -132,6 +135,7 @@ class DriftKasbonRepository implements KasbonRepository {
             synced: const Value(false),
           ),
         );
+    await _sync.enqueueCreate(tableName: 'debt_transactions', recordId: id);
   }
 
   @override
@@ -141,9 +145,10 @@ class DriftKasbonRepository implements KasbonRepository {
     String? note,
   }) async {
     final now = DateTime.now().millisecondsSinceEpoch;
+    final id = UuidUtil.generate();
     await _db.into(_db.debtTransactions).insert(
           DebtTransactionsCompanion.insert(
-            id: UuidUtil.generate(),
+            id: id,
             customerId: customerId,
             type: 'payment',
             amount: amount,
@@ -153,5 +158,6 @@ class DriftKasbonRepository implements KasbonRepository {
             synced: const Value(false),
           ),
         );
+    await _sync.enqueueCreate(tableName: 'debt_transactions', recordId: id);
   }
 }

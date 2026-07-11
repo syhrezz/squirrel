@@ -5,7 +5,10 @@ import '../models/cart_item.dart';
 
 /// Provides the [SaleRepository] backed by Drift.
 final saleRepositoryProvider = Provider<SaleRepository>((ref) {
-  return DriftSaleRepository(ref.watch(appDatabaseProvider));
+  return DriftSaleRepository(
+    ref.watch(appDatabaseProvider),
+    ref.watch(syncRepositoryProvider),
+  );
 });
 
 /// In-memory cart state for the current transaction.

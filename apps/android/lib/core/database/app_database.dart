@@ -10,6 +10,7 @@ part 'app_database.g.dart';
 /// Cloud sync is handled separately by the SyncService (future phase).
 @DriftDatabase(tables: [
   Products,
+  ProductSellingOptions,
   StockMovements,
   Sales,
   SaleItems,
@@ -26,7 +27,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -38,6 +39,16 @@ class AppDatabase extends _$AppDatabase {
             await m.createTable(syncQueue);
             await m.createTable(syncLog);
             await m.createTable(deviceInfo);
+          }
+          if (from < 6) {
+            await m.addColumn(products, products.category);
+          }
+          if (from < 7) {
+            await m.addColumn(products, products.inventoryUnit);
+            await m.addColumn(products, products.purchaseUnit);
+            await m.addColumn(products, products.purchaseConversion);
+            await m.addColumn(products, products.allowManualPrice);
+            await m.createTable(productSellingOptions);
           }
         },
       );

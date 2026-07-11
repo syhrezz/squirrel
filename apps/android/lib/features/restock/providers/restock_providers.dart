@@ -1,11 +1,47 @@
+import 'package:drift/drift.dart' as drift;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/database/app_database.dart';
 import '../../../shared/providers/database_providers.dart';
 import '../data/repositories/restock_repository.dart';
 import '../models/shopping_item.dart';
 
 /// Provides the [RestockRepository] backed by Drift.
 final restockRepositoryProvider = Provider<RestockRepository>((ref) {
-  return DriftRestockRepository(ref.watch(appDatabaseProvider));
+  return DriftRestockRepository(
+    ref.watch(appDatabaseProvider),
+    ref.watch(syncRepositoryProvider),
+  );
+});
+
+// ---------------------------------------------------------------------------
+// Restock history
+// ---------------------------------------------------------------------------
+
+class RestockWithItems {
+  const RestockWithItems({required this.restock, required this.items});
+  final Restock restock;
+  final List<RestockItem> items;
+
+  int get totalAmount => restock.totalAmount;
+}
+
+/// Watches all restocks ordered newest first, with their items.
+final restockHistoryProvider =
+    StreamProvider<List<RestockWithItems>>((ref) async* {
+  final db = ref.watch(appDatabaseProvider);
+
+  await for (final restocks in (db.select(db.restocks)
+        ..orderBy([(r) => drift.OrderingTerm.desc(r.createdAt)]))
+      .watch()) {
+    final result = <RestockWithItems>[];
+    for (final r in restocks) {
+      final items = await (db.select(db.restockItems)
+            ..where((i) => i.restockId.equals(r.id)))
+          .get();
+      result.add(RestockWithItems(restock: r, items: items));
+    }
+    yield result;
+  }
 });
 
 /// In-memory shopping session state.

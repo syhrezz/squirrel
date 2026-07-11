@@ -4,7 +4,6 @@ import '../models/sync_cursor.dart';
 ///
 /// This is the ONLY place in the codebase that will ever touch Supabase.
 /// All sync infrastructure depends on this interface.
-/// The concrete Supabase implementation will be added in Phase 7.
 ///
 /// Business features never import this interface.
 /// Only [SyncService] uses it.

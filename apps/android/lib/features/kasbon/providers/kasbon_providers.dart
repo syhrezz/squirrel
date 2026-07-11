@@ -11,11 +11,17 @@ import '../models/customer_with_balance.dart';
 // ---------------------------------------------------------------------------
 
 final customerRepositoryProvider = Provider<CustomerRepository>((ref) {
-  return DriftCustomerRepository(ref.watch(appDatabaseProvider));
+  return DriftCustomerRepository(
+    ref.watch(appDatabaseProvider),
+    ref.watch(syncRepositoryProvider),
+  );
 });
 
 final kasbonRepositoryProvider = Provider<KasbonRepository>((ref) {
-  return DriftKasbonRepository(ref.watch(appDatabaseProvider));
+  return DriftKasbonRepository(
+    ref.watch(appDatabaseProvider),
+    ref.watch(syncRepositoryProvider),
+  );
 });
 
 // ---------------------------------------------------------------------------

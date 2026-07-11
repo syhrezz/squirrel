@@ -556,13 +556,41 @@ class _IntegrityCard extends ConsumerWidget {
 }
 
 /// DEV ONLY — Sync queue status card.
-class _SyncQueueCard extends ConsumerWidget {
+class _SyncQueueCard extends ConsumerStatefulWidget {
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_SyncQueueCard> createState() => _SyncQueueCardState();
+}
+
+class _SyncQueueCardState extends ConsumerState<_SyncQueueCard> {
+  bool _syncing = false;
+
+  Future<void> _runSync() async {
+    if (_syncing) return;
+    setState(() => _syncing = true);
+    try {
+      await ref.read(syncManagerProvider).requestSync();
+    } finally {
+      if (mounted) {
+        setState(() => _syncing = false);
+        ref.invalidate(syncQueueSnapshotProvider);
+        ref.invalidate(recentSyncLogsProvider);
+        ref.invalidate(pendingSyncQueueProvider);
+        ref.invalidate(failedSyncQueueProvider);
+        ref.invalidate(lastSyncTimeProvider);
+        ref.invalidate(supabaseConnectionProvider);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final snapshotAsync = ref.watch(syncQueueSnapshotProvider);
     final logsAsync = ref.watch(recentSyncLogsProvider);
     final pendingAsync = ref.watch(pendingSyncQueueProvider);
     final failedAsync = ref.watch(failedSyncQueueProvider);
+    final connectionAsync = ref.watch(supabaseConnectionProvider);
+    final lastSyncAsync = ref.watch(lastSyncTimeProvider);
+    final orgId = ref.watch(organizationIdProvider);
 
     return Container(
       decoration: BoxDecoration(
@@ -579,6 +607,84 @@ class _SyncQueueCard extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Connection & sync status header
+          Row(
+            children: [
+              connectionAsync.when(
+                loading: () => const SizedBox(
+                  width: 12,
+                  height: 12,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                error: (_, __) => Container(
+                  width: 10,
+                  height: 10,
+                  decoration: const BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                data: (connected) => Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: connected ? Colors.green : Colors.orange,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              connectionAsync.when(
+                loading: () => const Text('Memeriksa koneksi...',
+                    style: TextStyle(fontSize: 12)),
+                error: (_, __) => const Text('Koneksi gagal',
+                    style: TextStyle(fontSize: 12, color: Colors.red)),
+                data: (connected) => Text(
+                  connected ? 'Supabase terhubung' : 'Supabase tidak tersedia',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: connected ? Colors.green[700] : Colors.orange[700],
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              const Spacer(),
+              if (_syncing)
+                const Row(
+                  children: [
+                    SizedBox(
+                      width: 10,
+                      height: 10,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                    SizedBox(width: 4),
+                    Text('Syncing...',
+                        style: TextStyle(fontSize: 11, color: Colors.blue)),
+                  ],
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          // Organization ID
+          _StatRow('Org ID', orgId.substring(0, 8) + '…'),
+
+          // Last sync time
+          lastSyncAsync.when(
+            loading: () => _StatRow('Last Sync', '…'),
+            error: (_, __) => _StatRow('Last Sync', 'Error'),
+            data: (ts) {
+              if (ts == null) return _StatRow('Last Sync', 'Belum pernah');
+              final dt = DateTime.fromMillisecondsSinceEpoch(ts);
+              return _StatRow(
+                'Last Sync',
+                '${dt.day}/${dt.month} ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}',
+              );
+            },
+          ),
+
+          const Divider(height: 20),
+
           // Queue snapshot
           snapshotAsync.when(
             loading: () => const CircularProgressIndicator(),
@@ -591,6 +697,25 @@ class _SyncQueueCard extends ConsumerWidget {
                 _StatRow('Failed', '${snap.failed}'),
                 _StatRow('Total', '${snap.total}'),
               ],
+            ),
+          ),
+          const Divider(height: 20),
+
+          // Manual sync trigger
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _syncing ? null : _runSync,
+              icon: _syncing
+                  ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.sync_rounded, size: 16),
+              label: Text(_syncing ? 'Sedang sinkronisasi...' : 'Sinkronisasi Sekarang'),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size.fromHeight(36),
+              ),
             ),
           ),
           const Divider(height: 20),
@@ -658,16 +783,17 @@ class _SyncQueueCard extends ConsumerWidget {
                         .map((l) {
                           final dt = DateTime.fromMillisecondsSinceEpoch(
                               l.startedAt);
+                          final status = l.status;
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 4),
                             child: Row(
                               children: [
                                 Icon(
-                                  l.status == 'success'
+                                  status == 'success'
                                       ? Icons.check_circle_rounded
                                       : Icons.cancel_rounded,
                                   size: 14,
-                                  color: l.status == 'success'
+                                  color: status == 'success'
                                       ? Colors.green
                                       : Colors.red,
                                 ),
@@ -694,6 +820,8 @@ class _SyncQueueCard extends ConsumerWidget {
               ref.invalidate(recentSyncLogsProvider);
               ref.invalidate(pendingSyncQueueProvider);
               ref.invalidate(failedSyncQueueProvider);
+              ref.invalidate(supabaseConnectionProvider);
+              ref.invalidate(lastSyncTimeProvider);
             },
             icon: const Icon(Icons.refresh_rounded, size: 18),
             label: const Text('Refresh'),

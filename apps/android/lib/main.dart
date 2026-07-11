@@ -1,16 +1,45 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'core/config/env.dart';
 import 'core/database/app_database.dart';
 import 'core/database/seed_data_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
+import 'features/sync/data/repositories/sync_repository.dart';
 import 'features/sync/providers/sync_providers.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Insert sample data on first launch (no-op if data already exists)
+  // Fail fast in debug builds if environment is not configured.
+  if (!AppEnv.isValid) {
+    if (kDebugMode) {
+      debugPrint(
+        '[AppEnv] WARNING: Supabase credentials are missing or invalid.\n'
+        '  SUPABASE_URL   = ${AppEnv.supabaseUrl}\n'
+        '  ORG_ID         = ${AppEnv.organizationId}\n'
+        'Sync will be disabled. Pass credentials via --dart-define.',
+      );
+    }
+  }
+
+  // Initialise Supabase once before runApp().
+  await Supabase.initialize(
+    url: AppEnv.supabaseUrl,
+    anonKey: AppEnv.supabaseAnonKey, // ignore: deprecated_member_use
+  );
+
+  // Scenario 4: Crash recovery.
+  // If the app was killed while records were in 'syncing' state,
+  // reset them back to 'pending' so they are retried on next sync.
+  // This runs synchronously before the UI starts — no race condition.
   final db = AppDatabase();
+  final syncRepo = DriftSyncRepository(db);
+  await syncRepo.resetSyncingToPending();
+
+  // Insert sample data on first launch (no-op if data already exists).
   await SeedDataService(db).seedIfEmpty();
   await db.close();
 
@@ -32,9 +61,6 @@ class _MrSquirrelAppState extends ConsumerState<MrSquirrelApp> {
   @override
   void initState() {
     super.initState();
-    // Start the sync manager after first frame so providers are ready.
-    // The manager triggers an initial sync after a 3-second delay,
-    // then runs a periodic sync every 30 minutes.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(syncManagerProvider).start();
     });

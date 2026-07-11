@@ -33,6 +33,35 @@ class Products extends Table {
   /// Soft delete — inactive products are hidden from operational screens.
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
 
+  /// Product category — used for discovery browsing in the sales screen.
+  /// One of the ProductCategory enum string values. Defaults to 'lainnya'.
+  TextColumn get category =>
+      text().withDefault(const Constant('lainnya'))();
+
+  // --- Unit conversion fields ---
+
+  /// The internal unit used to track stock.
+  /// Examples: pcs, gram, ml, egg, meter
+  /// This is the unit all stock numbers are stored in.
+  TextColumn get inventoryUnit =>
+      text().withDefault(const Constant('pcs'))();
+
+  /// The unit used when purchasing from a supplier.
+  /// Examples: Dus, Pack, Karung, Tray, Botol
+  TextColumn get purchaseUnit =>
+      text().withDefault(const Constant('pcs'))();
+
+  /// How many inventory units are in ONE purchase unit.
+  /// Example: 1 Dus = 40 pcs → store 40
+  /// Example: 1 Karung = 5000 gram → store 5000
+  IntColumn get purchaseConversion =>
+      integer().withDefault(const Constant(1))();
+
+  /// If true, operator can manually edit the price after selecting a
+  /// selling option. Used for products with volatile prices (rice, sugar).
+  BoolColumn get allowManualPrice =>
+      boolean().withDefault(const Constant(false))();
+
   // --- Sync metadata ---
   IntColumn get createdAt => integer()(); // epoch milliseconds
   IntColumn get updatedAt => integer()();
@@ -131,7 +160,38 @@ class RestockItems extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-/// Customers table.
+/// Product selling options table.
+///
+/// Each product can have one or more selling options.
+/// Example: Sugar → 250g @ Rp5.500, 500g @ Rp11.000, 1kg @ Rp22.000
+///
+/// quantity is in inventory units (e.g. grams, pcs).
+/// The operator sees only display_name and selling_price — never raw numbers.
+class ProductSellingOptions extends Table {
+  TextColumn get id => text()();
+  TextColumn get productId => text().references(Products, #id)();
+
+  /// What the operator and customer see. Example: '500 gram', '1 pcs', '1 kg'
+  TextColumn get displayName => text()();
+
+  /// How many inventory units this option represents.
+  /// Example: 500 gram option → quantity = 500 (if inventory unit is gram)
+  IntColumn get quantity => integer()();
+
+  /// Price for this selling option in IDR.
+  IntColumn get sellingPrice => integer()();
+
+  /// Controls display order in the bottom sheet picker.
+  IntColumn get displayOrder =>
+      integer().withDefault(const Constant(0))();
+
+  /// Soft delete — hidden options are not shown in the sales screen.
+  BoolColumn get isActive =>
+      boolean().withDefault(const Constant(true))();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
 ///
 /// Stores customer identity for kasbon (credit) tracking.
 /// Conflict strategy: last-write-wins (by updated_at) on sync.

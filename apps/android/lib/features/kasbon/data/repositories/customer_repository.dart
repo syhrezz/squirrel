@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/utils/uuid_util.dart';
 import '../../../../core/utils/dev_user.dart';
+import '../../../../features/sync/data/repositories/sync_repository.dart';
 
 /// CRUD operations for [Customer] records.
 ///
@@ -18,8 +19,9 @@ abstract class CustomerRepository {
 }
 
 class DriftCustomerRepository implements CustomerRepository {
-  const DriftCustomerRepository(this._db);
+  const DriftCustomerRepository(this._db, this._sync);
   final AppDatabase _db;
+  final SyncRepository _sync;
 
   @override
   Stream<List<Customer>> watchAllActive() {
@@ -56,6 +58,7 @@ class DriftCustomerRepository implements CustomerRepository {
       synced: const Value(false),
     );
     await _db.into(_db.customers).insert(companion);
+    await _sync.enqueueCreate(tableName: 'customers', recordId: id);
     return (await getById(id))!;
   }
 
@@ -70,6 +73,7 @@ class DriftCustomerRepository implements CustomerRepository {
     );
     await (_db.update(_db.customers)..where((c) => c.id.equals(id)))
         .write(companion);
+    await _sync.enqueueUpdate(tableName: 'customers', recordId: id);
     return (await getById(id))!;
   }
 
@@ -84,5 +88,6 @@ class DriftCustomerRepository implements CustomerRepository {
         synced: const Value(false),
       ),
     );
+    await _sync.enqueueUpdate(tableName: 'customers', recordId: id);
   }
 }

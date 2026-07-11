@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../remote_sync_data_source.dart';
 import '../../models/sync_cursor.dart';
@@ -13,9 +14,6 @@ import 'supabase_config.dart';
 /// fall back to no-op behaviour identical to [NoOpRemoteSyncDataSource].
 /// This prevents crashes during development when Supabase credentials
 /// have not yet been configured.
-///
-/// Phase 8 will wire this class into [sync_providers.dart] by replacing
-/// [NoOpRemoteSyncDataSource] with this implementation.
 class SupabaseRemoteSyncDataSource implements RemoteSyncDataSource {
   SupabaseRemoteSyncDataSource({required this.config});
 
@@ -31,13 +29,12 @@ class SupabaseRemoteSyncDataSource implements RemoteSyncDataSource {
   Future<bool> isReachable() async {
     if (!config.isConfigured) return false;
     try {
-      // Lightweight health check — query device_info with limit 0.
-      await _client
-          .from('device_info')
-          .select('device_id')
-          .limit(1)
+      // DNS lookup — lightweight network check with no auth required.
+      // Extracts the hostname from the Supabase URL (e.g. xxx.supabase.co).
+      final uri = Uri.parse(config.url);
+      final result = await InternetAddress.lookup(uri.host)
           .timeout(const Duration(seconds: 5));
-      return true;
+      return result.isNotEmpty && result.first.rawAddress.isNotEmpty;
     } catch (_) {
       return false;
     }
