@@ -1,0 +1,15 @@
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# IDE
+.vs/
+.vscode/
+*.sublime-*
+.idea/
+*.iml
+
+# Environment
+.env
+*.env.local
